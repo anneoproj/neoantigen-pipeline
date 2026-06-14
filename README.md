@@ -8,8 +8,7 @@ This Nextflow pipeline processes somatic mutations and ranks neoantigen candidat
 2. Generate mutation-overlapping 8-14mer peptides.
 3. Run NetChop per transcript FASTA.
 4. Split NetMHCpan work by HLA allele and peptide chunk.
-5. Run MHCflurry and MixMHCpred predictions for the same peptide-HLA pairs.
-6. Combine NetChop, NetMHCpan, MHCflurry, MixMHCpred, and expression data into one final scored candidate table.
+5. Combine NetChop, NetMHCpan, and expression data into one final scored candidate table.
 
 The final published result is written to `output/`.
 
@@ -54,28 +53,20 @@ nextflow run main.nf \
 
 ## Requirements
 
-Install the Python dependencies with:
+Create the Python environment and install dependencies with uv:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-The pipeline also requires Nextflow and Docker. Download NetChop and NetMHCpan manually from (https://services.healthtech.dtu.dk/services/NetChop-3.1/) and (https://services.healthtech.dtu.dk/services/NetMHCpan-4.1/) accordingly, then place the downloaded archives in the Docker build directories:
+The pipeline also requires Nextflow and Docker. Download NetChop and NetMHCpan manually from (https://services.healthtech.dtu.dk/services/NetChop-3.1/) and (https://services.healthtech.dtu.dk/services/NetMHCpan-4.1/) axxordingly, then place the downloaded archives in the Docker build directories:
 
 ```text
 docker/netchop/netChop.tar.gz
 docker/netmhcpan/netMHCpan.tar.gz
 ```
 
-MHCflurry is installed in its local Docker image with the class I presentation models described by the MHCflurry command line documentation: https://openvax.github.io/mhcflurry/commandline_tools.html.
-
-MixMHCpred is distributed separately by the Gfeller Lab. Download it from https://github.com/GfellerLab/MixMHCpred, save the archive as:
-
-```text
-docker/mixmhcpred/MixMHCpred.tar.gz
-```
-
-The workflow builds the local Docker images automatically from `docker/netchop`, `docker/netmhcpan`, `docker/mhcflurry`, and `docker/mixmhcpred`.
+The workflow builds the local Docker images automatically from `docker/netchop` and `docker/netmhcpan`.
 
 ## Run
 
@@ -93,14 +84,6 @@ nextflow run main.nf \
 
 Increase `netmhcpan_max_forks` if the machine has enough CPU and memory for more concurrent NetMHCpan containers. Decrease `netmhcpan_chunk_size` if individual NetMHCpan tasks are still too large.
 
-MHCflurry and MixMHCpred concurrency can be tuned with:
-
-```bash
-nextflow run main.nf \
-    --mhcflurry_max_forks 1 \
-    --mixmhcpred_max_forks 1
-```
-
 ## Output
 
 Each sample produces:
@@ -109,4 +92,35 @@ Each sample produces:
 output/<sample_id>_neoantigen_candidates.csv
 ```
 
-The final table contains peptide metadata, HLA allele, NetChop score, NetMHCpan `IC50`, MHCflurry affinity/presentation columns, MixMHCpred score/rank columns, expression score, component scores, and final `PeptideScore`. The `PeptideScore` still uses NetMHCpan `IC50`, but rows are no longer filtered to `IC50 < 500`.
+The final table contains peptide metadata, HLA allele, NetChop score, IC50, expression score, component scores, and final `PeptideScore`.
+
+## MixMHC2-only mode
+
+The workflow has an isolated MHC-II branch triggered with `--mixmhc2_only true`.
+
+In MHC-II mode:
+
+- If `--mixmhc2_peptides_input` or `--mixmhc2_input_glob` is set, MixMHC2 runs directly on those files.
+- If neither is set, peptides are generated from MAF files using `mixmhc2_min_len`/`mixmhc2_max_len` (default 12-21).
+- If `HLA` is present in the peptide input, it is used directly.
+- If `HLA` is missing, MixMHC2 uses `data/netmhcpan_input/<sample>_hla.txt` by sample and builds the cartesian product.
+
+Supported peptide input formats:
+
+- `TXT`: one peptide per line (minimum valid format)
+- `CSV/TSV`: required `Peptide`; optional `HLA`, `Sample`, `Source`/`Origin`, `Protein`, `Gene`
+
+Output files keep input columns and add:
+
+- `MixMHC2pred_Score`
+- `MixMHC2pred_PercentileRank`
+- `InputSource` (`custom_peptides` or `maf_generated`)
+
+Run example:
+
+```bash
+nextflow run main.nf \
+    --mixmhc2_only true \
+    --mixmhc2_input_glob "data/mixmhc2_inputs/*.tsv" \
+    --mixmhc2_command "mixmhc2predictor --input {input_file} --output {output_file}"
+```
