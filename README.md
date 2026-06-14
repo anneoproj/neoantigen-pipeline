@@ -123,4 +123,50 @@ nextflow run main.nf \
     --mixmhc2_only true \
     --mixmhc2_input_glob "data/mixmhc2_inputs/*.tsv" \
     --mixmhc2_command "mixmhc2predictor --input {input_file} --output {output_file}"
+
+### Smoke-test fixtures
+
+Use these local fixtures to validate MixMHC2-only mode with custom inputs:
+
+```text
+tests/fixtures/mixmhc2/
+├── hla/PT1_hla.txt
+├── hla/PT2_hla.txt
+├── input/PT1_custom_hla.csv
+├── input/PT2_custom_no_hla.tsv
+├── input/PT1_custom_txt.txt
+└── mock_mixmhc2predictor.py
+```
+
+- `PT1_custom_hla.csv` includes explicit HLA and should work even without fallback HLA lookup.
+- `PT2_custom_no_hla.tsv` has no HLA column and is expanded using `PT2_hla.txt`.
+- `PT1_custom_txt.txt` is plain TXT format.
+
+Example checks:
+
+```bash
+nextflow run main.nf \
+  --mixmhc2_only true \
+  --mixmhc2_input_glob "tests/fixtures/mixmhc2/input/PT1_custom_hla.csv" \
+  --hla_dir tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+
+nextflow run main.nf \
+  --mixmhc2_only true \
+  --mixmhc2_input_glob "tests/fixtures/mixmhc2/input/*.tsv" \
+  --hla_dir tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+
+nextflow run main.nf \
+  --mixmhc2_only true \
+  --mixmhc2_peptides_input tests/fixtures/mixmhc2/input/PT1_custom_txt.txt \
+  --hla_dir tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+```
+
+The output should contain all source columns and:
+
+- `MixMHC2pred_Score`
+- `MixMHC2pred_PercentileRank`
+- `InputSource` (`custom_peptides`)
 ```
