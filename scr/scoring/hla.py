@@ -28,3 +28,7 @@ def hla_to_mhcflurry(value):
 
 def hla_to_mixmhcpred(value):
     return normalize_hla(value)
+
+
+def hla_to_mixmhc2(value):
+    return hla_to_mixmhcpred(value)

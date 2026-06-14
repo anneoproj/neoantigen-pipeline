@@ -10,6 +10,8 @@ include { NETMHCPAN as NEOPEP_NETMHCPAN } from './modules/netmhcpan.nf'
 include { BUILD_MHCFLURRY_INPUT; MHCFLURRY } from './modules/mhcflurry.nf'
 include { BUILD_MHCFLURRY_INPUT as BUILD_EXISTING_MHCFLURRY_INPUT; MHCFLURRY as EXISTING_MHCFLURRY } from './modules/mhcflurry.nf'
 include { MHCFLURRY as NEOPEP_MHCFLURRY } from './modules/mhcflurry.nf'
+include { GENERATE_MIXMHC2_PEPTIDES } from './modules/build_mixmhc2_peptides.nf'
+include { MIXMHC2_PREPARE_INPUT; MIXMHC2_RUN; MIXMHC2_MERGE } from './modules/mixmhc2.nf'
 include { MHCNUGGETS; PSSMHCPAN } from './modules/additional_predictors.nf'
 include { MHCNUGGETS as EXISTING_MHCNUGGETS; PSSMHCPAN as EXISTING_PSSMHCPAN } from './modules/additional_predictors.nf'
 include { MHCNUGGETS as NEOPEP_MHCNUGGETS; PSSMHCPAN as NEOPEP_PSSMHCPAN } from './modules/additional_predictors.nf'
@@ -20,8 +22,45 @@ include { PREPARE_NEOPEP; ADD_NEOPEP_SCORES } from './modules/neopep.nf'
 
 
 workflow {
+    if (params.mixmhc2_only) {
+        if (params.mixmhc2_input_glob) {
+            mixmhc2_source_files = Channel.fromPath(params.mixmhc2_input_glob, checkIfExists: true)
+                .map { path -> tuple(path.baseName, path, "custom_peptides") }
+        } else if (params.mixmhc2_peptides_input) {
+            mixmhc2_source_files = Channel.value(file(params.mixmhc2_peptides_input))
+                .map { path -> tuple(path.baseName, path, "custom_peptides") }
+        } else if (params.maf_glob) {
+            mixmhc2_source_files = Channel.fromPath(params.maf_glob)
+                .map { file -> tuple(file.baseName, file) }
+                | BUILD_TRANSCRIPTS
+                .map { sample_id, transcript_csv ->
+                    def hla = file("${params.hla_dir}/${sample_id}_hla.txt")
+                    tuple(sample_id, transcript_csv, hla)
+                }
+                | GENERATE_MIXMHC2_PEPTIDES
+                .map { sample_id, peptides_csv -> tuple(sample_id, peptides_csv, "maf_generated") }
+        } else {
+            throw new IllegalArgumentException("mixmhc2_only mode requires --mixmhc2_input_glob, --mixmhc2_peptides_input, or a valid --maf_glob")
+        }
 
-    if (params.neopep_input) {
+        mixmhc2_prepared = mixmhc2_source_files
+            .map { sample_id, source_file, source_type ->
+                tuple(sample_id, source_file, params.hla_dir, source_type)
+            }
+            | MIXMHC2_PREPARE_INPUT
+
+        mixmhc2_predictions = mixmhc2_prepared
+            .map { sample_id, prepared_csv, pairs_file, source_type -> tuple(sample_id, pairs_file) }
+            | MIXMHC2_RUN
+
+        mixmhc2_scored = mixmhc2_prepared
+            .join(mixmhc2_predictions)
+            .map { sample_id, prepared_csv, pairs_file, source_type, prediction_file ->
+                tuple(sample_id, prepared_csv, prediction_file)
+            }
+            | MIXMHC2_MERGE
+
+    } else if (params.neopep_input) {
         neopep_images_ready = ENSURE_NEOPEP_DOCKER_IMAGES()
         neopep_prepared = PREPARE_NEOPEP(Channel.value(file(params.neopep_input)))
 

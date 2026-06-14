@@ -175,6 +175,72 @@ def add_mixmhcpred_scores(df, mixmhcpred_file):
     )
 
 
+def add_mhcnuggets_scores(df, prediction_file):
+    predictions = pd.read_csv(prediction_file)
+    if predictions.empty:
+        return add_prediction_scores(
+            df,
+            predictions,
+            ["MHCnuggets_IC50"],
+        )
+
+    if "HLA" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() == "hla":
+                predictions = predictions.rename(columns={col: "HLA"})
+                break
+    if "Peptide" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() == "peptide":
+                predictions = predictions.rename(columns={col: "Peptide"})
+                break
+
+    if "MHCnuggets_IC50" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() in {"mhcnuggets_ic50", "mhcnuggets"}:
+                predictions = predictions.rename(columns={col: "MHCnuggets_IC50"})
+                break
+
+    return add_prediction_scores(
+        df,
+        predictions,
+        ["MHCnuggets_IC50"],
+    )
+
+
+def add_pssmhcpan_scores(df, prediction_file):
+    predictions = pd.read_csv(prediction_file)
+    if predictions.empty:
+        return add_prediction_scores(
+            df,
+            predictions,
+            ["PSSMHCpan_IC50"],
+        )
+
+    if "HLA" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() == "hla":
+                predictions = predictions.rename(columns={col: "HLA"})
+                break
+    if "Peptide" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() == "peptide":
+                predictions = predictions.rename(columns={col: "Peptide"})
+                break
+
+    if "PSSMHCpan_IC50" not in predictions.columns:
+        for col in predictions.columns:
+            if col.lower() in {"pssmhcpan_ic50", "pssmhcpan"}:
+                predictions = predictions.rename(columns={col: "PSSMHCpan_IC50"})
+                break
+
+    return add_prediction_scores(
+        df,
+        predictions,
+        ["PSSMHCpan_IC50"],
+    )
+
+
 def add_expression_scores(df, expression_file):
     expr = expression_lookup(expression_file)
     df = df.copy()

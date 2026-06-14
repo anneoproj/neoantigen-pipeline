@@ -123,6 +123,7 @@ nextflow run main.nf \
     --mixmhc2_only true \
     --mixmhc2_input_glob "data/mixmhc2_inputs/*.tsv" \
     --mixmhc2_command "mixmhc2predictor --input {input_file} --output {output_file}"
+```
 
 ### Smoke-test fixtures
 
@@ -148,20 +149,20 @@ Example checks:
 nextflow run main.nf \
   --mixmhc2_only true \
   --mixmhc2_input_glob "tests/fixtures/mixmhc2/input/PT1_custom_hla.csv" \
-  --hla_dir tests/fixtures/mixmhc2/hla \
-  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+  --hla_dir ${PWD}/tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 ${PWD}/tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
 
 nextflow run main.nf \
   --mixmhc2_only true \
   --mixmhc2_input_glob "tests/fixtures/mixmhc2/input/*.tsv" \
-  --hla_dir tests/fixtures/mixmhc2/hla \
-  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+  --hla_dir ${PWD}/tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 ${PWD}/tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
 
 nextflow run main.nf \
   --mixmhc2_only true \
   --mixmhc2_peptides_input tests/fixtures/mixmhc2/input/PT1_custom_txt.txt \
-  --hla_dir tests/fixtures/mixmhc2/hla \
-  --mixmhc2_command "python3 tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
+  --hla_dir ${PWD}/tests/fixtures/mixmhc2/hla \
+  --mixmhc2_command "python3 ${PWD}/tests/fixtures/mixmhc2/mock_mixmhc2predictor.py --input {input_file} --output {output_file}"
 ```
 
 The output should contain all source columns and:
